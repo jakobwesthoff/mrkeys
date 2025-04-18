@@ -20,6 +20,7 @@ use external_type::*;
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::convert::TryInto;
+use std::ops::Deref;
 use std::os::raw::c_void;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -183,16 +184,31 @@ pub fn convert(
     None
 }
 
+lazy_static! {
+    static ref CHANNEL_SENDER: Arc<Mutex<Option<broadcast::Sender<Event>>>> =
+        Arc::new(Mutex::new(None));
+}
+
 pub fn get_channel() -> broadcast::Receiver<Event> {
-    let (sender, _receiver) = broadcast::channel::<Event>(32);
-    let rx = sender.subscribe();
+    let mut candidate = CHANNEL_SENDER.lock().unwrap();
 
-    std::thread::spawn(move || {
-        listen(move |event| {
-            sender.send(event).unwrap();
-        })
-        .unwrap();
-    });
+    match candidate.deref() {
+        Some(sender) => sender.subscribe(),
+        None => {
+            let (sender, receiver) = broadcast::channel::<Event>(32);
 
-    rx
+            let tx = sender.clone();
+            candidate.replace(sender);
+
+            // FIXME: Handle possible errors more gracefully
+            std::thread::spawn(move || {
+                listen(move |event| {
+                    tx.send(event).unwrap();
+                })
+                .unwrap();
+            });
+
+            receiver
+        }
+    }
 }
