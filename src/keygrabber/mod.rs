@@ -20,7 +20,6 @@ use external_type::*;
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::ops::Deref;
 use std::os::raw::c_void;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -29,10 +28,8 @@ use tokio::sync::broadcast;
 #[link(name = "Cocoa", kind = "framework")]
 unsafe extern "C" {}
 
-type Callback = dyn FnMut(Event) + Sync + Send;
-
 struct State {
-    callback: Option<Box<Callback>>,
+    sender: Option<broadcast::Sender<Event>>,
     last_flags: CGEventFlags,
     pressed_keys: HashSet<Key>,
 }
@@ -40,7 +37,7 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
-            callback: None,
+            sender: None,
             last_flags: CGEventFlags::empty(),
             pressed_keys: Default::default(),
         }
@@ -69,24 +66,16 @@ unsafe extern "C" fn raw_callback(
     cg_event: CGEvent,
     _user_info: *mut c_void,
 ) -> CGEvent {
-    if let Some(event) = convert(_type, &cg_event /*, &mut keyboard*/) {
-        let mut state = STATE.lock().unwrap();
-        if let Some(ref mut callback) = state.callback {
-            callback(event);
+    let mut state = STATE.lock().unwrap();
+    if let Some(event) = process_cg_event(_type, &cg_event, &mut state) {
+        if let Some(ref mut sender) = state.sender {
+            sender.send(event).unwrap();
         }
     }
     cg_event
 }
 
-pub fn listen<T>(callback: T) -> Result<(), ListenError>
-where
-    T: FnMut(Event) + 'static,
-    T: Send + Sync,
-{
-    let mut state = STATE.lock().unwrap();
-    state.callback = Some(Box::new(callback));
-    drop(state);
-
+pub fn listen() -> Result<(), ListenError> {
     // Unsafe: this is okay to do, as we are checking the response values to ensure we got a valid
     // tap
     let tap = unsafe {
@@ -153,7 +142,6 @@ pub fn convert(
             let code: CGKeyCode = code.try_into().ok()?;
             let flags = cg_event.get_flags();
 
-            let mut state = STATE.lock().unwrap();
             if flags < state.last_flags {
                 state.last_flags = flags;
                 Some(EventType::KeyRelease(Key::from(code)))
@@ -184,28 +172,18 @@ pub fn convert(
     None
 }
 
-lazy_static! {
-    static ref CHANNEL_SENDER: Arc<Mutex<Option<broadcast::Sender<Event>>>> =
-        Arc::new(Mutex::new(None));
-}
-
 pub fn get_channel() -> broadcast::Receiver<Event> {
-    let mut candidate = CHANNEL_SENDER.lock().unwrap();
+    let mut state = STATE.lock().unwrap();
 
-    match candidate.deref() {
-        Some(sender) => sender.subscribe(),
+    match state.sender {
+        Some(ref sender) => sender.subscribe(),
         None => {
             let (sender, receiver) = broadcast::channel::<Event>(32);
-
-            let tx = sender.clone();
-            candidate.replace(sender);
+            state.sender.replace(sender);
 
             // FIXME: Handle possible errors more gracefully
             std::thread::spawn(move || {
-                listen(move |event| {
-                    tx.send(event).unwrap();
-                })
-                .unwrap();
+                listen().unwrap();
             });
 
             receiver
