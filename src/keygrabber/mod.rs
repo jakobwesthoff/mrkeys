@@ -120,21 +120,25 @@ pub fn listen() -> Result<(), ListenError> {
     Ok(())
 }
 
-pub fn convert(
-    _type: CGEventType,
-    cg_event: &CGEvent,
-    // keyboard_state: &mut Keyboard,
-) -> Option<Event> {
+fn process_cg_event(_type: CGEventType, cg_event: &CGEvent, state: &mut State) -> Option<Event> {
     let option_type = match _type {
         CGEventType::KeyDown => {
             let code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE);
             let keycode: CGKeyCode = code.try_into().ok()?;
-            Some(EventType::KeyPress(Key::from(keycode)))
+            let key = Key::from(keycode);
+            if state.pressed_keys.contains(&key) {
+                None
+            } else {
+                state.pressed_keys.insert(key);
+                Some(EventType::KeyPress(key))
+            }
         }
         CGEventType::KeyUp => {
             let code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE);
             let keycode: CGKeyCode = code.try_into().ok()?;
-            Some(EventType::KeyRelease(Key::from(keycode)))
+            let key = Key::from(keycode);
+            state.pressed_keys.remove(&key);
+            Some(EventType::KeyRelease(key))
         }
         CGEventType::FlagsChanged => {
             // This handles keys like shift, meta, ctrl, command, alt and so on...
