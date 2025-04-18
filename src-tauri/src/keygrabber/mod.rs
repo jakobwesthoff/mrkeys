@@ -6,7 +6,7 @@
 // https://github.com/Narsil/rdev
 // ===========================================================================
 
-mod event;
+pub mod event;
 mod external_type;
 
 use cocoa::base::nil;
