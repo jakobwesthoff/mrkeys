@@ -1,0 +1,11 @@
+[package]
+name = "mrkeys"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cocoa = "0.26.0"
+core-graphics = "0.24.0"
+lazy_static = "1.5.0"
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.44.2", features = ["full"] }

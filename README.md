@@ -65,3 +65,9 @@ While there are some great keycaster tools out there already, I thought it would
 
 The project is intended to be released under the MIT License. However, this may change depending on the licensing requirements of libraries and dependencies used during development. The final license will be determined once all dependencies are finalized.
 
+## Acknowledgements
+
+Special thanks to the following librariers or code bases, which were used directly or as an inspiration:
+
+- [rdev](https://github.com/Narsil/rdev): The heavy lifting parts for key capturing were kindly borrowed from here.
+
