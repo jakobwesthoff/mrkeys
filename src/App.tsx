@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
 function App() {
+  const [lastKey, setLastKey] = useState<any>(null);
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
 
@@ -11,6 +12,17 @@ function App() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
   }
+
+  useEffect(() => {
+    // FIXME: We do not really care at this point, when this is really ready.
+    (async () => {
+      const channel = new Channel<unknown>();
+      channel.onmessage = (event) => {
+        setLastKey(event);
+      }
+      await invoke("subscribe_to_key_events", { channel });
+    })();
+  }, []);
 
   return (
     <main className="container">
@@ -27,6 +39,9 @@ function App() {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
+
+      <pre style={{ textAlign: "left" }}>{JSON.stringify(lastKey, undefined, 2)}</pre>
+
       <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
       <form
