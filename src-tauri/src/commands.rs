@@ -12,7 +12,7 @@ pub struct KeygrabberSubscriptions {
 #[tauri::command]
 pub async fn register_keygrabber(
     state: State<'_, Mutex<KeygrabberSubscriptions>>,
-    channel: Channel<String>,
+    channel: Channel<Event>,
 ) -> Result<String, ()> {
     let id = Uuid::new_v4();
     let mut rx = keygrabber::subscribe().await;
@@ -20,7 +20,7 @@ pub async fn register_keygrabber(
         loop {
             let event = rx.recv().await.unwrap();
             println!("{:?}", event);
-            channel.send(format!("{:?}", event)).unwrap();
+            channel.send(event).unwrap();
         }
     });
 

@@ -10,7 +10,7 @@ type KeygrabberReference = {
 function App() {
   const is_mounted_ref = useRef<boolean>(false);
   const keygrabber_ref = useRef<KeygrabberReference>({ id: null, is_loading: false });
-  const [lastEvent, setLastEvent] = useState<string | null>(null);
+  const [lastEvent, setLastEvent] = useState<any>(null);
 
   useEffect(() => {
     is_mounted_ref.current = true;
@@ -40,8 +40,8 @@ function App() {
       // is_mounted_ref and handling cleanup manually, after the await, should
       // the component been unmounted in the meantime.
       (async () => {
-        const channel = new Channel<string>();
-        channel.onmessage = (event: string) => {
+        const channel = new Channel<unknown>();
+        channel.onmessage = (event: unknown) => {
           setLastEvent(event)
         }
         const id = await invoke<string>("register_keygrabber", { channel });
@@ -61,7 +61,7 @@ function App() {
   return (
     <main className="container">
       <div className="row">
-        <pre style={{ textAlign: "left" }}>{lastEvent}</pre>
+        <pre style={{ textAlign: "left" }}>{JSON.stringify(lastEvent, undefined, 2)}</pre>
       </div>
     </main>
   );
