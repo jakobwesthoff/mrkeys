@@ -35,8 +35,8 @@ The development of MrKeys will be:
 - [X] Implement global key capturing on macOS using accessibility APIs or appropriate Rust libraries
 - [X] Initialize Tauri environment with React
 - [X] Integrate key grabbing functionality with Tauri (addressing macOS main thread restrictions)
-- [ ] Create data channel between frontend and backend for key event transmission
-- [ ] Install tailwindcss for the frontend
+- [X] Create data channel between frontend and backend for key event transmission
+- [X] Install tailwindcss for the frontend
 - [ ] Design and implement clean, attractive key display styling
 - [ ] Develop configuration dialog for user preferences
 - [ ] Add menubar integration for quick access to settings and enable/disable functionality
