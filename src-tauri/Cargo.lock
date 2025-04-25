@@ -3057,7 +3057,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 [[package]]
 name = "rdev"
 version = "0.5.0-2"
-source = "git+https://github.com/rustdesk-org/rdev.git?branch=master#f9b60b1dd0f3300a1b797d7a74c116683cd232c8"
+source = "git+https://github.com/jakobwesthoff/rdev.git?branch=master#dfb5cb4cdabd998c02e8fa9ecb9c881aec11559e"
 dependencies = [
  "cocoa",
  "core-foundation 0.9.4",
@@ -3071,6 +3071,7 @@ dependencies = [
  "libc",
  "log",
  "mio 0.8.11",
+ "serde",
  "strum",
  "strum_macros",
  "widestring",
