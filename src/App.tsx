@@ -1,49 +1,68 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useRef, useState } from "react";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+type KeygrabberReference = {
+  id: string | null,
+  is_loading: boolean
+};
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+function App() {
+  const is_mounted_ref = useRef<boolean>(false);
+  const keygrabber_ref = useRef<KeygrabberReference>({ id: null, is_loading: false });
+  const [lastEvent, setLastEvent] = useState<string | null>(null);
+
+  useEffect(() => {
+    is_mounted_ref.current = true;
+
+    return () => { is_mounted_ref.current = false };
+  }, []);
+
+  // Register keygrabber channel on mount
+  useEffect(() => {
+    const cleanup = () => {
+      const id = keygrabber_ref.current.id;
+      keygrabber_ref.current.id = null;
+      // ASYNC: We do not care about possible races with other registrations,
+      // as we set the id to null immediately and then fire and forget.
+      (async () => {
+        if (keygrabber_ref.current.is_loading === false && id !== null) {
+          console.log(`Unregister keygrabber: ${id}`);
+          await invoke("unregister_keygrabber", { id });
+        }
+      })();
+    }
+
+
+    if (!keygrabber_ref.current.is_loading) {
+      keygrabber_ref.current.is_loading = true;
+      // ASYNC: Handling this async is okay, as we are checking for
+      // is_mounted_ref and handling cleanup manually, after the await, should
+      // the component been unmounted in the meantime.
+      (async () => {
+        const channel = new Channel<string>();
+        channel.onmessage = (event: string) => {
+          setLastEvent(event)
+        }
+        const id = await invoke<string>("register_keygrabber", { channel });
+        console.log(`Registered keygrabber: ${id}`);
+        keygrabber_ref.current.is_loading = false;
+        keygrabber_ref.current.id = id;
+
+        if (!is_mounted_ref.current) {
+          cleanup();
+        }
+      })();
+    }
+
+    return cleanup;
+  }, []);
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
       <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <pre style={{ textAlign: "left" }}>{lastEvent}</pre>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
     </main>
   );
 }
