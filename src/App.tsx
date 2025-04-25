@@ -7,10 +7,13 @@ type KeygrabberReference = {
   is_loading: boolean
 };
 
+type Event = any;
+
 function App() {
   const is_mounted_ref = useRef<boolean>(false);
   const keygrabber_ref = useRef<KeygrabberReference>({ id: null, is_loading: false });
-  const [lastEvent, setLastEvent] = useState<any>(null);
+  const [lastEvents, setLastEvents] = useState<Event[]>([]);
+  const MAX_EVENTS = 8;
 
   useEffect(() => {
     is_mounted_ref.current = true;
@@ -41,9 +44,14 @@ function App() {
       // the component been unmounted in the meantime.
       (async () => {
         const channel = new Channel<unknown>();
-        channel.onmessage = (event: unknown) => {
-          setLastEvent(event)
-        }
+        channel.onmessage = (event: any) => {
+          if (!event || !event.event_type || !event.event_type.KeyPress) {
+            return;
+          }
+          setLastEvents((events) => {
+            return [...events.slice(Math.max(0, events.length - (MAX_EVENTS - 1))), event];
+          });
+        };
         const id = await invoke<string>("register_keygrabber", { channel });
         console.log(`Registered keygrabber: ${id}`);
         keygrabber_ref.current.is_loading = false;
@@ -59,9 +67,17 @@ function App() {
   }, []);
 
   return (
-    <main className="container">
-      <div className="row">
-        <pre style={{ textAlign: "left" }}>{JSON.stringify(lastEvent, undefined, 2)}</pre>
+    <main className="bg-zinc-900 text-zinc-100">
+      <div className="justify-end flex">
+        {lastEvents.map(event => {
+          return <>
+            <div className="min-w-[80px] h-[60px] border-amber-400 border flex m-1" >
+              <div className="w-full h-full flex items-center justify-center text-3xl p-2">
+                {event.event_type.KeyPress}
+              </div>
+            </div>
+          </>
+        })}
       </div>
     </main>
   );
